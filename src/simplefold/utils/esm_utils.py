@@ -11,7 +11,7 @@ import typing as T
 import numpy as np
 from functools import partial
 
-from utils import residue_constants
+from . import residue_constants
 
 try:
     import mlx.core as mx
@@ -171,6 +171,7 @@ def collate_dense_tensors(
 
 def _af2_to_esm(d):
     # Remember that t is shifted from residue_constants by 1 (0 is padding).
+    # X is a non-canonical amino acids 
     esm_reorder = [d.padding_idx] + [
         d.get_idx(v) for v in residue_constants.restypes_with_x
     ]
