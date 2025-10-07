@@ -1,55 +1,36 @@
 import torch
 import pytorch_lightning as pl
-
+from simplefold.utils.pylogger import RankedLogger
+from pytorch_lightning.profilers import PyTorchProfiler, SimpleProfiler
 from pathlib import Path
-from torch.utils.data import DataLoader
-from src.esm.model.RCfold import RCFold, AlignBio_DataModule, ESM_Regressor, AlignBio_Dataset
+from src.esm.model.RCfold import PL_ESM_Regressor, AlignBio_DataModule
+
+torch.set_float32_matmul_precision("medium")
+log = RankedLogger(__name__, rank_zero_only=True)
 
 if __name__ == "__main__":
-    model = ESM_Regressor(
-        input_dim=425
-    )
-    trainer = pl.Trainer(max_epochs=10)
-    # load data into dataloader object
-    
     data_dir = Path("/scratch/eac709/overlays/the-protein-engineering-tournament-2023/in_silico_supervised/input/Alpha-Amylase (In Silico_ Supervised)")
     esm_cache_dir = data_dir / Path("esm")
+    train_csv = Path("train.csv")
 
-    csv = Path("train.csv")
-    dataset = AlignBio_Dataset(data_dir / csv, "expression", esm_cache_dir)
-    dataloader = DataLoader(dataset, batch_size=4)
+    pl.seed_everything(42, workers=True)
 
-    print(len(dataset))
+    model = PL_ESM_Regressor(
+        input_dim=425
+    )
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    loss_fn = torch.nn.MSELoss()
+    profiler = PyTorchProfiler(dirpath=".", filename="perf_logs.txt")
+    trainer = pl.Trainer(
+        max_epochs=1,
+        profiler=profiler
+        # logger=log
+    )
+    train_dm = AlignBio_DataModule(
+        data_dir,
+        train_csv,
+        esm_cache_dir,
+        "expression",
+        batch_size=64,
+    )
 
-    model.train()
-    for i, data in enumerate(dataloader):
-        # TODO: develop some sample model architectures
-        # later: implement the pytorch lightning training loop
-        inputs = data["embed"]
-        labels = data["label"]
-
-        # zero gradient
-        optimizer.zero_grad()
-        # forward pass
-        output = model(inputs)
-
-        # calculate loss and backprop gradients
-        # Ensure output and labels are float tensors and have matching shapes
-        output = output.float().view(-1)
-        labels = labels.float().view(-1)
-        loss = loss_fn(output, labels)
-        loss.backward()
-
-        # update
-        optimizer.step()
-
-        print(loss.item())
-        pass
-
-    # train_datamodule = AlignBio_DataModule(data_dir, csv, esm_cache_dir)
-
-    # model = ESM_Regressor()
-    # trainer.fit(model, train_datamodule)
+    trainer.fit(model=model, train_dataloaders=train_dm)

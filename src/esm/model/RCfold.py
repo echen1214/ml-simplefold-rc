@@ -1,69 +1,97 @@
-import os
-import shutil
-import copy
 import numpy as np
 import pandas as pd
-
-from pathlib import Path
-from functools import partial
-
 import torch
-import lightning
-import lightning.pytorch as pl
+import pytorch_lightning as pl
+from pathlib import Path
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
 
-import esm
-import simplefold.utils
 from simplefold.utils.esm_utils import _af2_to_esm, esm_model_dict
 # from utils.esm_utils import _af2_to_esm
-
-# TODO: future refactor
-# allow ESM tokenization preprocessing
 
 class ESM_Regressor(nn.Module):
     # initialize architecture
     # simple feed forward network
     def __init__(
         self,
-        device = "cuda:0"
+        input_dim,
+        hidden_size1 = 64,
+        # hidden_size2 = 256,
+        # hidden_size3 = 128,
+        esm_embed_dim = 1280,
+        # device = "cuda:0",
     ):
-    # def forward(nn.Module):
     # extract per-residue reprsentation
     # s representation
         super().__init__()
-        self.device = device
-
+        # self.device = device
         # simplefold seems to do a different encoding than what 
         # is done in ESM
-        # this is batch_coverter in the esm tutorials
-        self.af2_to_esm = _af2_to_esm(self.esm_dict)
 
+        # B: batchsize
+        # N: number of residues in sequence (for amylase: 425)
+        # E: embedding layer 33 (output) (1280)
+        # B x N x 1280 
+        # how do we pool the embeddings to pass into feed-forward
+        # all of the sequences are quite similar ... 
+        # so perhaps the pooling may not be so useful
         self.feed_forward = nn.Sequential(
-
-
+            nn.Linear(input_dim, hidden_size1),
+            nn.LayerNorm(hidden_size1),
+            nn.SiLU(),
         )
-        # batch_converter = alphabet.get_batch_converter()
-        # model.eval()
-        pass
+        self.output_layer = nn.Linear(hidden_size1, 1)
 
-class RCFold(pl.LightningModule):
+    def forward(self, input):
+        # TODO: add optionality for pooling choices
+        #  mean pooling...
+        avg = torch.mean(input, dim=2)
+        x = self.feed_forward(avg)
+        out = self.output_layer(x)
+        return out
+
+class PL_ESM_Regressor(pl.LightningModule):
     def __init__(
         self,
-        esm_model: str = "esm2_3B",
-        model: nn.Module = None,
+        input_dim: int = 425, 
+        # esm_model: str = "esm2_3B",
+        loss_fn = nn.MSELoss(), 
+        lr: float = 0.01
     ):
     # add config file that describes the architecture
         super().__init__()
-        self.model = model
+        self.model = ESM_Regressor(
+            input_dim=input_dim
+        )
+        self.loss_fn = loss_fn
+        self.lr = lr
         
+    def forward(self, inputs):
+        return self.model(inputs)
+    
     # define training_step
+    def training_step(self, batch, batch_idx):
+        x, y = batch['embed'], batch['label']
+        y_hat = self.model(x).reshape(-1)
+        loss = self.loss_fn(y_hat, y)
+        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        return loss
+    
+    # validation_step
+    def validation_step(self, batch, batch_idx):
+        x, y = batch['embed'], batch['label']
+        y_hat = self.model(x).reshape(-1)
+        loss = self.loss_fn(y_hat, y)
+        self.log("valid_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
     # configure_optimizers
-
-    # validation_step
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=self.lr)
 
     # test_step
+
+    # predict_step
+    # run model beginning from sequence->embedding->push through model
 
 
 class Preprocess_Dataset(Dataset):
@@ -82,7 +110,6 @@ class Preprocess_Dataset(Dataset):
             self.df_alignbio["mutant"].iloc[idx],
             self.df_alignbio["mutated_sequence"].iloc[idx]
         )
-
     # i believe in esm/extract.py
     # the FastaBatchedDataset object loads as many sequences into
     # the batch as possible... this is more emory efficient than
@@ -102,20 +129,19 @@ class AlignBio_Dataset(Dataset):
     def __init__(
         self, 
         csv: Path = None, 
-        label_col: str = None, 
+        label_col: str = None, # specify the column that describes the training data
+        cache: Path = None, 
     ):
         super().__init__()
         self.df_alignbio = pd.read_csv(csv)
         self.label_col = label_col
+        self.df_alignbio = self.df_alignbio.dropna(subset=[self.label_col]).reset_index(drop=True)
+        self.cache = cache
 
     def __len__(self) -> int:
         return len(self.df_alignbio)
     
-    # tokenization of the sequence here?
-    # can follow the tokenization in the ESM tutorial
-    # TODO: tokenization can be done as preprocessing (as in DiffDock)
-    # or we can do it on the fly ... it makes more sense for it to be      
-    # a preprocessing step so we save compute
+    # tokenization of the sequence here
     def preprocessing(self, esm_cache_outdir: Path, truncation_seq_length: int = 4096, batch_size: int = 4):
         self.truncation_seq_length = truncation_seq_length
         self.batch_size = batch_size
@@ -153,12 +179,11 @@ class AlignBio_Dataset(Dataset):
                     output_file.parent.mkdir(parents=True, exist_ok=True)
                     result = {"label": label}
                     truncate_len = min(self.truncation_seq_length, len(strs[i]))
-                # NOTE: token 0 is always a beginning-of-sequence token, so the first residue is token 1.
+                    # NOTE: token 0 is always a beginning-of-sequence token, so the first residue is token 1.
                     result["representations"] = {
                         layer: t[i, 1 : truncate_len + 1].clone()
                         for layer, t in representations.items()
                     }
-
                     torch.save(
                         result,
                         output_file,
@@ -170,13 +195,15 @@ class AlignBio_Dataset(Dataset):
     # this makes sense for the esm cache ... so the model doesn't load
     # the entire cache
     # do we transform the labels here?
-    # TODO: seek from the cache directory from the mutation name (mutant column)
     def __getitem__(self, idx: int) -> dict:
         # convert AA sequence to tokens
         sample = {
+            "name": self.df_alignbio["mutant"].iloc[idx],
             "seq": self.df_alignbio["mutated_sequence"].iloc[idx],
-            "label": self.df_alignbio[self.label_col].iloc[idx]
+            "label": torch.tensor(float(self.df_alignbio[self.label_col].iloc[idx]), dtype=torch.float32)
         }
+        input = torch.load(self.cache / Path(f"{sample['name']}.pt"))['representations'][33]
+        sample["embed"] = input
         return sample
         
 
@@ -184,6 +211,8 @@ class AlignBio_Dataset(Dataset):
 # pytorch lightning wrapper to prepare the datasets
 # user should pass in the csv path name corresponding to train&val/test/predict set
 # refactor so that AlignBio_dataset gets initialized outside?
+# TODO:
+# -[ ] add optionality to split by dataset column
 class AlignBio_DataModule(pl.LightningDataModule):
     # target_csv dataset
     def __init__(
@@ -191,10 +220,13 @@ class AlignBio_DataModule(pl.LightningDataModule):
         data_dir: Path = None, 
         csv: Path = None,
         esm_cache_outdir: Path = None, 
+        label: str = "expression",
         batch_size: int = 32,
         preprocess: bool = False,
     ):
         super().__init__()
+        assert label in ["expression", "thermostability", "specific activity"]
+        self.label = label
         self.csv: Path = data_dir / csv
         self.esm_cache_outdir = esm_cache_outdir
         self.batch_size = batch_size
@@ -203,7 +235,8 @@ class AlignBio_DataModule(pl.LightningDataModule):
         # TODO: check if all files exist (like in DiffDock)
         if (
             self.esm_cache_outdir is not None
-            and (not self.esm_cache_outdir.exists() or not any(self.esm_cache_outdir.iterdir()))
+            and (not self.esm_cache_outdir.exists() 
+                 or not any(self.esm_cache_outdir.iterdir()))
         ) or self.preprocess:
             self.esm_cache_outdir.mkdir(parents=True, exist_ok=True)
             AlignBio_Dataset(self.csv).preprocessing(self.esm_cache_outdir, batch_size=batch_size)
@@ -213,26 +246,26 @@ class AlignBio_DataModule(pl.LightningDataModule):
     # split by dataset column?
     def setup(self, stage: str) -> None:
         if stage == "fit":
-            data = AlignBio_Dataset(self.csv)
+            data = AlignBio_Dataset(self.csv, self.label, self.esm_cache_outdir)
             self.train, self.val = random_split(
                 data, [0.8, 0.2], torch.Generator().manual_seed(42)
             )
         if stage == "test":
-            self.test = AlignBio_Dataset(self.csv)
+            self.test = AlignBio_Dataset(self.csv, self.label, self.esm_cache_outdir)
 
         if stage == "predict":
-            self.predict = AlignBio_Dataset(self.csv) 
+            self.predict = AlignBio_Dataset(self.csv, self.label, self.esm_cache_outdir)
         
     # return train/val/test/predict_dataloader -> Dataloader
     # dataloader also has various features like 
     # num_workers/pin_memory/shuffle/collate_fn
     def train_dataloader(self):
-        return DataLoader(self.train, batch_size=self.batch_size)
+        return DataLoader(self.train, pin_memory=True, num_workers=2, batch_size=self.batch_size)
     def val_dataloader(self):
-        return DataLoader(self.val, batch_size=self.batch_size)
+        return DataLoader(self.val, pin_memory=True, num_workers=2, batch_size=self.batch_size)
     def test_dataloader(self):
         return DataLoader(self.test, batch_size=self.batch_size)
-    def test_dataloader(self):
+    def predict_dataloader(self):
         return DataLoader(self.predict, batch_size=self.batch_size)
 
 
