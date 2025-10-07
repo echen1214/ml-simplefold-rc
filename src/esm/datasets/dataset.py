@@ -45,7 +45,7 @@ class AlignBio_Dataset(Dataset):
         return len(self.df_alignbio)
 
     # tokenization of the sequence here
-    def preprocessing(self, esm_cache_outdir: Path, truncation_seq_length: int = 4096, batch_size: int = 4):
+    def preprocessing(self, esm_cache_dir: Path, truncation_seq_length: int = 4096, batch_size: int = 4):
         self.truncation_seq_length = truncation_seq_length
         self.batch_size = batch_size
         load_fn = torch.hub.load
@@ -73,7 +73,7 @@ class AlignBio_Dataset(Dataset):
                 logits = out["logits"].to(device="cpu")
                 representations = {layer: t.to(device="cpu") for layer, t in out["representations"].items()}
                 for i, label in enumerate(labels):
-                    output_file = esm_cache_outdir / f"{label}.pt"
+                    output_file = esm_cache_dir / f"{label}.pt"
                     output_file.parent.mkdir(parents=True, exist_ok=True)
                     result = {"label": label}
                     truncate_len = min(self.truncation_seq_length, len(strs[i]))
@@ -107,42 +107,49 @@ class AlignBio_Dataset(Dataset):
 # -[ ] add optionality to split by dataset column
 class AlignBio_DataModule(pl.LightningDataModule):
     # target_csv dataset
-    def __init__(self, data_dir: Path = None, csv: Path = None, esm_cache_outdir: Path = None, label: str = "expression", batch_size: int = 32, preprocess: bool = False):
+    def __init__(self, 
+                 data_dir: str = None, 
+                 csv: str = None, 
+                 esm_cache_dir: str = None, 
+                 label: str = "expression", 
+                 batch_size: int = 32, 
+                 preprocess: bool = False):
         super().__init__()    
         assert label in ["expression", "thermostability", "specific activity"]
         self.label = label
-        self.csv: Path = data_dir / csv
-        self.esm_cache_outdir = esm_cache_outdir
+
+        self.csv: Path = Path(data_dir) / Path(csv)
+        self.esm_cache_dir = Path(esm_cache_dir)
         self.batch_size = batch_size
         self.preprocess = preprocess
         self.save_hyperparameters()
 
         # TODO: check if all files exist (like in DiffDock)
         if (
-            self.esm_cache_outdir is not None
-            and (not self.esm_cache_outdir.exists() or not any(self.esm_cache_outdir.iterdir()))
+            self.esm_cache_dir is not None
+            and (not self.esm_cache_dir.exists() or not any(self.esm_cache_dir.iterdir()))
         ) or self.preprocess:
-            self.esm_cache_outdir.mkdir(parents=True, exist_ok=True)
-            AlignBio_Dataset(self.csv).preprocessing(self.esm_cache_outdir, batch_size=batch_size)
+            self.esm_cache_dir.mkdir(parents=True, exist_ok=True)
+            AlignBio_Dataset(self.csv).preprocessing(self.esm_cache_dir, batch_size=batch_size)
 
     # setup
     # can also try doing different splitting strategies
     # split by dataset column?
     def setup(self, stage: str) -> None:
         if stage == "fit":
-            data = AlignBio_Dataset(self.csv, self.label, self.esm_cache_outdir)
+            data = AlignBio_Dataset(self.csv, self.label, self.esm_cache_dir)
             self.train, self.val = random_split(
                 data, [0.8, 0.2], torch.Generator().manual_seed(42)
             )
         if stage == "test":
-            self.test = AlignBio_Dataset(self.csv, self.label, self.esm_cache_outdir)
+            self.test = AlignBio_Dataset(self.csv, self.label, self.esm_cache_dir)
         if stage == "predict":
-            self.predict = AlignBio_Dataset(self.csv, self.label, self.esm_cache_outdir)
+            self.predict = AlignBio_Dataset(self.csv, self.label, self.esm_cache_dir)
 
     def train_dataloader(self):
-        return DataLoader(self.train, pin_memory=True, num_workers=2, batch_size=self.batch_size)
+        return DataLoader(self.train, pin_memory=True, num_workers=4, batch_size=self.batch_size)
     def val_dataloader(self):
-        return DataLoader(self.val, pin_memory=True, num_workers=2, batch_size=self.batch_size)
+        return DataLoader(self.val, pin_memory=True, num_workers=4, batch_size=self.batch_size)
     def test_dataloader(self):
         return DataLoader(self.test, batch_size=self.batch_size)
     def predict_dataloader(self):

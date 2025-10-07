@@ -1,0 +1,17 @@
+train: True
+
+data:
+  _target_: src.esm.datasets.dataset.AlignBio_DataModule
+  data_dir: /scratch/eac709/overlays/the-protein-engineering-tournament-2023/in_silico_supervised/input/Alpha-Amylase (In Silico_ Supervised)
+  esm_cache_dir: /scratch/eac709/overlays/the-protein-engineering-tournament-2023/in_silico_supervised/input/Alpha-Amylase (In Silico_ Supervised)/esm
+  csv: train.csv
+  label: expression
+  batch_size: 64
+  preprocess: False
+
+input_dim: 425
+max_epoch: 3
+
+## no relative imports in the config
+model:
+  _target_: src.esm.model.RCfold.PL_ESM_Regressor
