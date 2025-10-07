@@ -7,7 +7,7 @@ data:
   csv: train.csv
   label: expression
   batch_size: 64
-  preprocess: False
+  preprocess: True
 
 input_dim: 425
 max_epoch: 3
