@@ -2,3 +2,9 @@
 *.DS_Store
 *simplefold.egg-info
 artifacts/
+sbatch/
+outputs/
+.vscode/
+lightning_logs/
+fit-perf_logs*
+wandb/

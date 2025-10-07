@@ -224,13 +224,14 @@ class AlignBio_DataModule(pl.LightningDataModule):
         batch_size: int = 32,
         preprocess: bool = False,
     ):
-        super().__init__()
+        super().__init__()    
         assert label in ["expression", "thermostability", "specific activity"]
         self.label = label
         self.csv: Path = data_dir / csv
         self.esm_cache_outdir = esm_cache_outdir
         self.batch_size = batch_size
         self.preprocess = preprocess
+        self.save_hyperparameters()
 
         # TODO: check if all files exist (like in DiffDock)
         if (

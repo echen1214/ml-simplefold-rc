@@ -1,9 +1,11 @@
 import torch
+import wandb
 import pytorch_lightning as pl
 from simplefold.utils.pylogger import RankedLogger
 from pytorch_lightning.profilers import PyTorchProfiler, SimpleProfiler
 from pathlib import Path
 from src.esm.model.RCfold import PL_ESM_Regressor, AlignBio_DataModule
+from pytorch_lightning.loggers import WandbLogger
 
 torch.set_float32_matmul_precision("medium")
 log = RankedLogger(__name__, rank_zero_only=True)
@@ -19,11 +21,19 @@ if __name__ == "__main__":
         input_dim=425
     )
 
-    profiler = PyTorchProfiler(dirpath=".", filename="perf_logs.txt")
+    run = wandb.init(
+        entity="eac709-nyu",
+        project="RCfold",
+        name="ESM_regressor_0"
+    )
+
+    profiler = PyTorchProfiler(dirpath="lightning_logs", filename="ESM_regressor_0.txt")
+    wandb_logger = WandbLogger()
+
     trainer = pl.Trainer(
-        max_epochs=1,
-        profiler=profiler
-        # logger=log
+        max_epochs=250,
+        profiler=profiler,
+        logger=wandb_logger
     )
     train_dm = AlignBio_DataModule(
         data_dir,
