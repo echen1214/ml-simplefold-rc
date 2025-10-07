@@ -4,7 +4,8 @@ import pytorch_lightning as pl
 from simplefold.utils.pylogger import RankedLogger
 from pytorch_lightning.profilers import PyTorchProfiler, SimpleProfiler
 from pathlib import Path
-from src.esm.model.RCfold import PL_ESM_Regressor, AlignBio_DataModule
+from src.esm.datasets.dataset import AlignBio_DataModule
+from src.esm.model.RCfold import PL_ESM_Regressor
 from pytorch_lightning.loggers import WandbLogger
 
 torch.set_float32_matmul_precision("medium")
