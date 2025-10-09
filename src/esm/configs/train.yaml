@@ -1,16 +1,39 @@
 train: True
+work_dir: ${hydra:runtime.cwd}
+hydra:
+  job:
+    name: expression_MLP
+  run:
+    dir: ${work_dir}/sbatch/hydra_logs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+
+job_name: ${hydra:job.name}
+profiler: 
+  init: False
+  dir: ${work_dir}/sbatch/lightning_logs
+  filename: ${job_name}
+
+wandb:
+# wandb log in sbatch directory
+  init: True
+  dir: ${work_dir}/sbatch/wandb
+  entity: eac709-nyu
+  project: RCfold
+  name: ${job_name}
 
 data:
   _target_: src.esm.datasets.dataset.AlignBio_DataModule
   data_dir: /scratch/eac709/overlays/the-protein-engineering-tournament-2023/in_silico_supervised/input/Alpha-Amylase (In Silico_ Supervised)
-  esm_cache_dir: /scratch/eac709/overlays/the-protein-engineering-tournament-2023/in_silico_supervised/input/Alpha-Amylase (In Silico_ Supervised)/esm
+  esm_cache_dir: ${data.data_dir}/esm
   csv: train.csv
   label: expression
   batch_size: 64
   preprocess: False
 
-input_dim: 425
-max_epoch: 3
+trainer:
+# lightning logs (check points) in sbatch directory=
+  default_root_dir: ${work_dir}/sbatch/lightning_logs
+  input_dim: 425
+  max_epoch: 250
 
 ## no relative imports in the config
 model:
