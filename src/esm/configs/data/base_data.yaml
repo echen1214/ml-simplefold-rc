@@ -1,0 +1,7 @@
+_target_: src.esm.datasets.dataset.AlignBio_DataModule
+data_dir: ???
+esm_cache_dir: ${data.data_dir}/esm
+csv: train.csv
+label: expression
+batch_size: 64
+preprocess: False

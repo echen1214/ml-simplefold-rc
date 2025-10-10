@@ -38,7 +38,9 @@ class AlignBio_Dataset(Dataset):
         super().__init__()
         self.df_alignbio = pd.read_csv(csv)
         self.label_col = label_col
-        self.df_alignbio = self.df_alignbio.dropna(subset=[self.label_col]).reset_index(drop=True)
+        # Only drop NaN values if label_col is specified (for training/inference)
+        if self.label_col is not None:
+            self.df_alignbio = self.df_alignbio.dropna(subset=[self.label_col]).reset_index(drop=True)
         self.cache = cache
 
     def __len__(self) -> int:
