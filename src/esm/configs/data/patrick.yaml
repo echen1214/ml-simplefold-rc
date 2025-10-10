@@ -1,0 +1,5 @@
+defaults:
+  - base_data
+
+data_dir: /teamspace/studios/this_studio/the-protein-engineering-tournament-2023/in_silico_supervised/input/Alpha-Amylase (In Silico_ Supervised)
+esm_cache_dir: /teamspace/studios/this_studio/data/esm_cache

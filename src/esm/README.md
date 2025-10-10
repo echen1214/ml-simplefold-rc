@@ -18,6 +18,6 @@ mkdir -p ~/data/esm-cache
 
 - **Run training with the Lightning Studio config:**
    ```bash
-   cd /teamspace/studios/this_studio/ml-simplefold-rc/src/esm
-   python train.py --config-name train_lightning_studio
+   cd /teamspace/studios/this_studio/ml-simplefold-rc
+   python -m src.esm.train data=patrick wandb=patrick
    ```
