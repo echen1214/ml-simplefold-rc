@@ -1,0 +1,5 @@
+init: True
+dir: ${work_dir}/sbatch/wandb
+entity: eac709-nyu
+project: RCfold
+name: ${job_name}

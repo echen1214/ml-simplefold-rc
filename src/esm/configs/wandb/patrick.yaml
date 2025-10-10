@@ -1,0 +1,5 @@
+init: True
+dir: ${work_dir}/sbatch/wandb
+entity: computer-lab
+project: ml-simplefold-rc
+name: ${job_name}

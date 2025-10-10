@@ -7,4 +7,4 @@ outputs/
 .vscode/
 lightning_logs/
 fit-perf_logs*
-wandb/
+/wandb/
