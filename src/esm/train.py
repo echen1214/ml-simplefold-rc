@@ -8,7 +8,7 @@ from pytorch_lightning.profilers import PyTorchProfiler, SimpleProfiler
 from pathlib import Path
 from .datasets.dataset import AlignBio_DataModule
 from .model.RCfold import PL_ESM_Regressor
-from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.loggers import WandbLogger, CSVLogger
 
 torch.set_float32_matmul_precision("medium")
 # log = RankedLogger(__name__, rank_zero_only=True)
@@ -19,13 +19,27 @@ def train(cfg):
     print(f"Instantiating model <{cfg.model._target_}>")
     model: pl.LightningModule = hydra.utils.instantiate(cfg.model)
 
-    profiler = PyTorchProfiler(dirpath="lightning_logs", filename="ESM_regressor_0.txt")
-    wandb_logger = WandbLogger()
+    if cfg.profiler.init:
+        profiler = PyTorchProfiler(dirpath=cfg.profiler.dir, filename=f"profile_{cfg.profiler.filename}")
+    else:
+        profiler = None
+
+    if cfg.wandb.init:
+        wandb.init(
+            dir=cfg.wandb.dir,
+            entity=cfg.wandb.entity,
+            project=cfg.wandb.project,
+            name=cfg.wandb.name
+        )
+        logger = WandbLogger()
+    else:
+        logger = CSVLogger(save_dir=cfg.trainer.default_root_dir, name=cfg.job_name)
 
     trainer = pl.Trainer(
-        max_epochs=cfg.max_epoch, 
+        default_root_dir=cfg.trainer.default_root_dir,
+        max_epochs=cfg.trainer.max_epoch, 
         profiler=profiler,
-        logger=wandb_logger
+        logger=logger
     )
 
     print(f"Instantiating datamodule <{cfg.data._target_}>")
