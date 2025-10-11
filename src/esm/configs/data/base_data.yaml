@@ -1,5 +1,6 @@
 _target_: src.esm.datasets.dataset.AlignBio_DataModule
-data_dir: ???
+data_root: ???
+data_dir: ${data.data_root}/${experiment.protein_dir_name}
 esm_cache_dir: ${data.data_dir}/esm
 csv: train.csv
 label: expression

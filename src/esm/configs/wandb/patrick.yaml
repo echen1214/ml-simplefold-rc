@@ -3,3 +3,8 @@ dir: ${work_dir}/sbatch/wandb
 entity: computer-lab
 project: ml-simplefold-rc
 name: ${job_name}
+group: ${experiment.protein_dir_name}
+tags:
+  - ${experiment.protein_dir_name}
+  - expression
+notes: "Training expression MLP on ${experiment.protein_dir_name}"

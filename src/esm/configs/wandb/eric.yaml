@@ -3,3 +3,8 @@ dir: ${work_dir}/sbatch/wandb
 entity: eac709-nyu
 project: RCfold
 name: ${job_name}
+group: ${experiment.protein_dir_name}
+tags:
+  - ${experiment.protein_dir_name}
+  - expression
+notes: "Training expression MLP on ${experiment.protein_dir_name}"
