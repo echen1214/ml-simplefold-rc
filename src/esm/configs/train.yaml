@@ -1,6 +1,7 @@
 # to run on lighting studio, run with `python -m src.esm.train data=patrick wandb=patrick`
 defaults:
   - data: eric
+  - experiment: alpha_amylase
   - wandb: eric
   - _self_
 
@@ -12,7 +13,7 @@ hydra:
   run:
     dir: ${work_dir}/sbatch/hydra_logs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
 
-job_name: ${hydra:job.name}
+job_name: ${hydra:job.name}_${experiment.protein_dir_name}_${data.label}
 profiler: 
   init: False
   dir: ${work_dir}/sbatch/lightning_logs
