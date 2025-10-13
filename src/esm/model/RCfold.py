@@ -3,6 +3,7 @@ import pytorch_lightning as pl
 import wandb
 from torch import nn
 from torchmetrics.functional import spearman_corrcoef
+from pytorch_lightning.loggers import WandbLogger
 
 class ESM_Regressor(nn.Module):
     # initialize architecture
@@ -99,9 +100,18 @@ class PL_ESM_Regressor(pl.LightningModule):
         y = torch.tensor(self.test_step_y)
         pearson_r = torch.corrcoef(torch.stack([y_hat, y]))[0, 1].item()
         rho = spearman_corrcoef(y_hat, y).item()
-        self.logger.log_table(key="Test Table", 
-                              columns=["test_pearson_r", "test_spearman_rho"], 
-                              data=[[pearson_r, rho]] )
+        # log only if logger is WandbLogger
+        if isinstance(self.logger, WandbLogger):
+            self.logger.log_table(
+                key="Test Table",
+                columns=["test_pearson_r", "test_spearman_rho"],
+                data=[[pearson_r, rho]]
+            )
+        else:
+            self.logger.log_metrics({
+                "test_pearson_r": pearson_r,
+                "test_spearman_rho": rho
+            })
 
 
     # predict_step

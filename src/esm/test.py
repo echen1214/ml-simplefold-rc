@@ -21,17 +21,22 @@ def test(cfg):
     seed = cfg.get("seed", 42)
     pl.seed_everything(seed, workers=True)
 
-    # Log results to previous wandb run as artifact
-    wandb.init(
-        job_type="evaluation",
-        dir=cfg.wandb.dir,
-        entity=cfg.wandb.entity,
-        project=cfg.wandb.project,
-        name=cfg.wandb.name,
-        # id=cfg.wandb.run,
-        # resume='must'
-    )
-    logger = WandbLogger()
+    if cfg.wandb.init:
+        wandb.init(
+            job_type="evaluation",
+            dir=cfg.wandb.dir,
+            entity=cfg.wandb.entity,
+            project=cfg.wandb.project,
+            name=cfg.wandb.name,
+            group=cfg.wandb.get("group", None),
+            tags=cfg.wandb.get("tags", []),
+            notes=cfg.wandb.get("notes", None),
+            config=OmegaConf.to_container(cfg, resolve=True)
+        )
+        logger = WandbLogger()
+    else:
+        logger = None
+
 
     trainer = pl.Trainer(logger=logger, enable_checkpointing=False)
 
