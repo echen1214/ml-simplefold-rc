@@ -37,8 +37,8 @@ class ESM_Regressor(nn.Module):
 
     def forward(self, input):
         # TODO: add optionality for pooling choices
-        #  mean pooling...
-        avg = torch.mean(input, dim=2)
+        #  mean pooling over sequence length to get [B, 1280]
+        avg = torch.mean(input, dim=1)
         x = self.feed_forward(avg)
         out = self.output_layer(x)
         return out
@@ -46,7 +46,7 @@ class ESM_Regressor(nn.Module):
 class PL_ESM_Regressor(pl.LightningModule):
     def __init__(
         self,
-        input_dim: int = 425, 
+        input_dim: int = 1280, 
         # esm_model: str = "esm2_3B",
         loss_fn = nn.MSELoss(), 
         lr: float = 0.01

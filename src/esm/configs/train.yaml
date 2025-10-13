@@ -9,7 +9,7 @@ train: True
 work_dir: ${hydra:runtime.cwd}
 hydra:
   job:
-    name: expression_MLP
+    name: esm
   run:
     dir: ${work_dir}/sbatch/hydra_logs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
 
@@ -22,9 +22,9 @@ profiler:
 trainer:
 # lightning logs (check points) in sbatch directory=
   default_root_dir: ${work_dir}/sbatch/lightning_logs
-  input_dim: 425
   max_epoch: 250
 
 ## no relative imports in the config
 model:
   _target_: src.esm.model.RCfold.PL_ESM_Regressor
+  input_dim: 1280

@@ -34,7 +34,7 @@ class Preprocess_Dataset(Dataset):
 # columns of csv file are:
 # mutant,dataset,mutated_sequence,expression,thermostability,specific activity
 class AlignBio_Dataset(Dataset):
-    def __init__(self, csv: Path = None, label_col: str = "expression", cache: Path = None):
+    def __init__(self, csv: Path = None, label_col: str = "expression", cache: Path = None, aggregate_replicates: bool = False):
         super().__init__()
 
         self.df_alignbio = pd.read_csv(csv)
@@ -165,7 +165,7 @@ class AlignBio_DataModule(pl.LightningDataModule):
             self.predict = AlignBio_Dataset(self.csv, self.label, self.esm_cache_dir)
 
     def train_dataloader(self):
-        return DataLoader(self.train, pin_memory=True, num_workers=4, batch_size=self.batch_size)
+        return DataLoader(self.train, shuffle=True, pin_memory=True, num_workers=4, batch_size=self.batch_size)
     def val_dataloader(self):
         return DataLoader(self.val, pin_memory=True, num_workers=4, batch_size=self.batch_size)
     def test_dataloader(self):
