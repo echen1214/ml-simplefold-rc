@@ -47,6 +47,7 @@ class PL_ESM_Regressor(pl.LightningModule):
     def __init__(
         self,
         input_dim: int = 425, 
+        hidden_size1: int = 64, 
         # esm_model: str = "esm2_3B",
         loss_fn = nn.MSELoss(), 
         lr: float = 0.01
@@ -55,7 +56,8 @@ class PL_ESM_Regressor(pl.LightningModule):
     # add config file that describes the architecture
         super().__init__()
         self.model = ESM_Regressor(
-            input_dim=input_dim
+            input_dim=input_dim,
+            hidden_size1=hidden_size1
         )
         self.loss_fn = loss_fn
         self.lr = lr

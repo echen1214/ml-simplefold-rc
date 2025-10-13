@@ -2,5 +2,8 @@
 experiment:
   protein_dir_name: Alpha-Amylase (In Silico_ Supervised)
 
+model:
+  input_dim: 425
+
 data:
   label: expression
