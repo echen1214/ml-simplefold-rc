@@ -1,0 +1,26 @@
+work_dir: ${hydra:runtime.cwd}
+
+ckpt_path: lightning_logs/or8yvmck/checkpoints/epoch=249-step=33750.ckpt
+wandb_run_path: eac709-nyu/RCfold/or8yvmck
+job_name: expression_MLP
+
+data:
+  _target_: src.esm.datasets.dataset.AlignBio_DataModule
+  data_dir: /scratch/eac709/overlays/the-protein-engineering-tournament-2023/in_silico_supervised/input/Alpha-Amylase (In Silico_ Supervised)
+  esm_cache_dir: ${data.data_dir}/esm
+  csv: test (with values).csv
+  label: expression
+  batch_size: 64
+  preprocess: False
+
+wandb:
+# wandb log in sbatch directory
+  init: True
+  dir: ${work_dir}/sbatch/wandb
+  entity: eac709-nyu
+  project: RCfold
+  run: or8yvmck
+  name: ${job_name}
+
+model:
+  _target_: src.esm.model.RCfold.PL_ESM_Regressor
