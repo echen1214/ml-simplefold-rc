@@ -1,0 +1,11 @@
+# @package _global_
+experiment:
+  protein_dir_name: beta-glucosidase B  (In Silico_ Supervised)
+
+model:
+  input_dim: 445
+  hidden_size1: 8
+
+data:
+  label: expression
+  batch_size: 32

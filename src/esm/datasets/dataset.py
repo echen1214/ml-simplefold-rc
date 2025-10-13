@@ -34,10 +34,15 @@ class Preprocess_Dataset(Dataset):
 # columns of csv file are:
 # mutant,dataset,mutated_sequence,expression,thermostability,specific activity
 class AlignBio_Dataset(Dataset):
-    def __init__(self, csv: Path = None, label_col: str = None, cache: Path = None):
+    def __init__(self, csv: Path = None, label_col: str = "expression", cache: Path = None):
         super().__init__()
+
         self.df_alignbio = pd.read_csv(csv)
         self.label_col = label_col
+        if self.label_col is not None and self.label_col not in self.df_alignbio.columns:
+            raise ValueError(
+                f"Label column '{self.label_col}' not found in CSV columns: {list(self.df_alignbio.columns)}"
+            )
         # Only drop NaN values if label_col is specified (for training/inference)
         if self.label_col is not None:
             self.df_alignbio = self.df_alignbio.dropna(subset=[self.label_col]).reset_index(drop=True)
@@ -115,13 +120,24 @@ class AlignBio_DataModule(pl.LightningDataModule):
                  esm_cache_dir: str = None, 
                  label: str = "expression", 
                  batch_size: int = 32, 
-                 preprocess: bool = False):
+                 preprocess: bool = False,
+                 data_root: str = None):
         super().__init__()    
-        assert label in ["expression", "thermostability", "specific activity"]
+        # assert label in ["expression", "thermostability", "specific activity"]
         self.label = label
 
-        self.csv: Path = Path(data_dir) / Path(csv)
+        # Resolve and validate data paths
+        data_dir_path = Path(data_dir) if data_dir is not None else None
+        if data_dir_path is None or not data_dir_path.exists():
+            raise FileNotFoundError(
+                f"data_dir does not exist: {data_dir_path}. Check your data_root and experiment.protein_dir_name."
+            )
+        self.csv: Path = data_dir_path / Path(csv)
+        if not self.csv.exists():
+            raise FileNotFoundError(f"CSV not found at resolved path: {self.csv}")
         self.esm_cache_dir = Path(esm_cache_dir)
+        # Ensure the ESM cache directory exists early
+        self.esm_cache_dir.mkdir(parents=True, exist_ok=True)
         self.batch_size = batch_size
         self.preprocess = preprocess
         self.save_hyperparameters()

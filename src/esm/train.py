@@ -29,7 +29,11 @@ def train(cfg):
             dir=cfg.wandb.dir,
             entity=cfg.wandb.entity,
             project=cfg.wandb.project,
-            name=cfg.wandb.name
+            name=cfg.wandb.name,
+            group=cfg.wandb.get("group", None),
+            tags=cfg.wandb.get("tags", []),
+            notes=cfg.wandb.get("notes", None),
+            config=OmegaConf.to_container(cfg, resolve=True)
         )
         logger = WandbLogger()
     else:
