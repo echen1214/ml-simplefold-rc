@@ -27,4 +27,5 @@ trainer:
 ## no relative imports in the config
 model:
   _target_: src.esm.model.RCfold.PL_ESM_Regressor
-  input_dim: 1280
+  # input_dim specified in experiment/[protein].yaml
+  input_dim: ???

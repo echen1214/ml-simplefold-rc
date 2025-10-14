@@ -1,6 +1,9 @@
 import torch
 import pytorch_lightning as pl
+import wandb
 from torch import nn
+from torchmetrics.functional import spearman_corrcoef
+from pytorch_lightning.loggers import WandbLogger
 
 class ESM_Regressor(nn.Module):
     # initialize architecture
@@ -46,19 +49,22 @@ class ESM_Regressor(nn.Module):
 class PL_ESM_Regressor(pl.LightningModule):
     def __init__(
         self,
-        input_dim: int = 1280, 
+        input_dim: int = 425, 
+        hidden_size1: int = 64, 
         # esm_model: str = "esm2_3B",
         loss_fn = nn.MSELoss(), 
         lr: float = 0.01
-
     ):
     # add config file that describes the architecture
         super().__init__()
         self.model = ESM_Regressor(
-            input_dim=input_dim
+            input_dim=input_dim,
+            hidden_size1=hidden_size1
         )
         self.loss_fn = loss_fn
         self.lr = lr
+        self.test_step_outputs = []
+        self.test_step_y = []
         
     def forward(self, inputs):
         return self.model(inputs)
@@ -82,7 +88,31 @@ class PL_ESM_Regressor(pl.LightningModule):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
 
-    # test_step
+    def test_step(self, batch, batch_idx):
+        x, y = batch['embed'], batch['label']
+        y_hat = self.model(x).reshape(-1)
+        self.test_step_outputs.extend(y_hat)
+        self.test_step_y.extend(y)
+        return {'y_hat': y_hat.detach().cpu(), 'y': y.detach().cpu()}
+
+    def on_test_epoch_end(self):
+        y_hat = torch.tensor(self.test_step_outputs)
+        y = torch.tensor(self.test_step_y)
+        pearson_r = torch.corrcoef(torch.stack([y_hat, y]))[0, 1].item()
+        rho = spearman_corrcoef(y_hat, y).item()
+        # log only if logger is WandbLogger
+        if isinstance(self.logger, WandbLogger):
+            self.logger.log_table(
+                key="Test Table",
+                columns=["test_pearson_r", "test_spearman_rho"],
+                data=[[pearson_r, rho]]
+            )
+        else:
+            self.logger.log_metrics({
+                "test_pearson_r": pearson_r,
+                "test_spearman_rho": rho
+            })
+
 
     # predict_step
     # run model beginning from sequence->embedding->push through model

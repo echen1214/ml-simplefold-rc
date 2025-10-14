@@ -123,7 +123,7 @@ class AlignBio_DataModule(pl.LightningDataModule):
                  preprocess: bool = False,
                  data_root: str = None):
         super().__init__()    
-        assert label in ["expression", "thermostability", "specific activity"]
+        # assert label in ["expression", "thermostability", "specific activity"]
         self.label = label
 
         # Resolve and validate data paths

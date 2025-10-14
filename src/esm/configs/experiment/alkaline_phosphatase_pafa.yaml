@@ -2,5 +2,8 @@
 experiment:
   protein_dir_name: Alkaline phosphatase PafA  (In Silico_ Supervised)
 
+model:
+  input_dim: 549
+  
 data:
   label: Carboxy 4-methylumbelliferyl phosphate ester (cMUP)

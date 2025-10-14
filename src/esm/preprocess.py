@@ -1,5 +1,5 @@
 from pathlib import Path
-from src.esm.model.RCfold import AlignBio_DataModule
+from .datasets.dataset import AlignBio_DataModule
 import argparse
 
 if __name__ == "__main__":

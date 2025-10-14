@@ -1,0 +1,30 @@
+defaults:
+  - data: eric
+  - experiment: alpha_amylase
+  - wandb: eric
+  - _self_
+
+train: False
+work_dir: ${hydra:runtime.cwd}
+hydra:
+  job:
+    # can be anything eg name of checkpoint run eg, or8yvmck
+    name: ??? 
+  run:
+    dir: ${work_dir}/sbatch/hydra_logs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+
+# specify the checkpoint of your model here eg,
+# lightning_logs/or8yvmck/checkpoints/epoch=249-step=33750.ckpt
+ckpt_path: ???
+job_name: ${hydra:job.name}
+
+data:
+  csv: test (with values).csv
+
+wandb:
+  name: eval_${job_name}
+
+model:
+  _target_: src.esm.model.RCfold.PL_ESM_Regressor
+
+notes: "Test ${job_name} on ${experiment.protein_dir_name}"
