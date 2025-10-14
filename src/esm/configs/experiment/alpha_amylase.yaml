@@ -4,3 +4,6 @@ experiment:
 
 data:
   label: expression
+
+trainer:
+  max_epoch: 600 
