@@ -63,6 +63,9 @@ class PL_ESM_Regressor(pl.LightningModule):
         )
         self.loss_fn = loss_fn
         self.lr = lr
+        # Save key hyperparameters into the Lightning checkpoint automatically
+        # (exclude non-serializable objects like loss_fn)
+        self.save_hyperparameters(ignore=["loss_fn"])
         self.test_step_outputs = []
         self.test_step_y = []
         
@@ -88,6 +91,12 @@ class PL_ESM_Regressor(pl.LightningModule):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
 
+    def on_save_checkpoint(self, checkpoint):
+        dm = self.trainer.datamodule
+        data = f"{dm.csv.parent.name}/{dm.csv.name}"
+        checkpoint["data"] = data
+        checkpoint["label"] = dm.label
+
     def test_step(self, batch, batch_idx):
         x, y = batch['embed'], batch['label']
         y_hat = self.model(x).reshape(-1)
@@ -100,18 +109,28 @@ class PL_ESM_Regressor(pl.LightningModule):
         y = torch.tensor(self.test_step_y)
         pearson_r = torch.corrcoef(torch.stack([y_hat, y]))[0, 1].item()
         rho = spearman_corrcoef(y_hat, y).item()
-        # log only if logger is WandbLogger
+        # data used in training the checkpoint
+        data_ckpt = getattr(self, "data_checkpoint", None)
+        label_ckpt = getattr(self, "label_checkpoint", None)
+        # data used in evaluating the test
+        datamodule = self.trainer.datamodule
+        data_test = f"{datamodule.csv.parent.name}/{datamodule.csv.name}"
+        label_test = datamodule.label
+        ckpt = getattr(self, "ckpt_path", None)
+        columns = [
+            "data_test", "label_test", "data_checkpoint", "label_checkpoint", "checkpoint",
+            "pearson_r", "spearman_rho"
+        ]
+        values = [data_test, label_test, data_ckpt, label_ckpt, ckpt, pearson_r, rho]
         if isinstance(self.logger, WandbLogger):
             self.logger.log_table(
                 key="Test Table",
-                columns=["test_pearson_r", "test_spearman_rho"],
-                data=[[pearson_r, rho]]
+                columns=columns,
+                data=[values]
             )
         else:
-            self.logger.log_metrics({
-                "test_pearson_r": pearson_r,
-                "test_spearman_rho": rho
-            })
+            metrics_dict = dict(zip(columns, values))
+            self.logger.log_metrics(metrics_dict)
 
 
     # predict_step
