@@ -9,3 +9,9 @@ model:
 data:
   label: expression
   batch_size: 32
+
+model:
+  input_dim: 1280
+
+trainer:
+  max_epoch: 1000 

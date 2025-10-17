@@ -12,10 +12,13 @@ def test(cfg):
     print(f"Instantiating model {cfg.model._target_}")
     model: pl.LightningModule = hydra.utils.instantiate(cfg.model)
 
-    checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=True)
+    checkpoint = torch.load(ckpt_path, map_location="cpu")
     model.load_state_dict(
         checkpoint["state_dict"], strict=True
     )
+    model.data_checkpoint = checkpoint.get("data", None)
+    model.label_checkpoint = checkpoint.get("label", None)
+    model.ckpt_path = ckpt_path
     model.eval()
 
     seed = cfg.get("seed", 42)
