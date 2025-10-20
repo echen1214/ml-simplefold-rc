@@ -16,8 +16,9 @@ def test(cfg):
     model.load_state_dict(
         checkpoint["state_dict"], strict=True
     )
-    model.data_checkpoint = checkpoint.get("data", None)
-    model.label_checkpoint = checkpoint.get("label", None)
+    model.checkpoint_data = checkpoint.get("data", None)
+    model.checkpoint_label = checkpoint.get("label", None)
+    model.checkpoint_url = checkpoint.get("url", None)
     model.ckpt_path = ckpt_path
     model.eval()
 

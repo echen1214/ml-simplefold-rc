@@ -3,11 +3,12 @@ experiment:
   protein_dir_name: Alpha-Amylase (In Silico_ Supervised)
 
 model:
-  input_dim: 1280
-  lr: 0.005
+  input_dim: 544000
+  lr: 0.01
 
 data:
   label: specific activity
+  batch_size: 128
 
 trainer:
-  max_epoch: 200 
+  max_epoch: 200

@@ -19,6 +19,9 @@ profiler:
   dir: ${work_dir}/sbatch/lightning_logs
   filename: ${job_name}
 
+# Optional: resume training from a Lightning checkpoint
+restore_ckpt: null
+
 trainer:
 # lightning logs (check points) in sbatch directory=
   default_root_dir: ${work_dir}/sbatch/lightning_logs
