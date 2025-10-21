@@ -34,7 +34,14 @@ class Preprocess_Dataset(Dataset):
 # columns of csv file are:
 # mutant,dataset,mutated_sequence,expression,thermostability,specific activity
 class AlignBio_Dataset(Dataset):
-    def __init__(self, csv: Path = None, label_col: str = "expression", cache: Path = None, aggregate_replicates: bool = False):
+    def __init__(
+        self, 
+        csv: Path = None, 
+        label_col: str = "expression", 
+        cache: Path = None, 
+        aggregate_replicates: bool = False,
+        use_all_zeros = False
+    ):
         super().__init__()
 
         self.df_alignbio = pd.read_csv(csv)
@@ -47,6 +54,7 @@ class AlignBio_Dataset(Dataset):
         if self.label_col is not None:
             self.df_alignbio = self.df_alignbio.dropna(subset=[self.label_col]).reset_index(drop=True)
         self.cache = cache
+        self.use_all_zeros = use_all_zeros
 
     def __len__(self) -> int:
         return len(self.df_alignbio)
@@ -104,6 +112,8 @@ class AlignBio_Dataset(Dataset):
             "label": torch.tensor(float(self.df_alignbio[self.label_col].iloc[idx]), dtype=torch.float32)
         }
         input = torch.load(self.cache / Path(f"{sample['name']}.pt"))['representations'][33]
+        if self.use_all_zeros:
+            input = torch.zeros_like(input)
         sample["embed"] = input
         return sample
 
@@ -114,17 +124,23 @@ class AlignBio_Dataset(Dataset):
 # -[ ] add optionality to split by dataset column
 class AlignBio_DataModule(pl.LightningDataModule):
     # target_csv dataset
-    def __init__(self, 
-                 data_dir: str = None, 
-                 csv: str = None, 
-                 esm_cache_dir: str = None, 
-                 label: str = "expression", 
-                 batch_size: int = 32, 
-                 preprocess: bool = False,
-                 data_root: str = None):
+    def __init__(
+        self, 
+        data_dir: str = None,
+        csv: str = None,
+        esm_cache_dir: str = None,
+        label: str = "expression",
+        batch_size: int = 32,
+        preprocess: bool = False,
+        data_root: str = None,
+        use_all_zeros: bool = False
+    ):
         super().__init__()    
         # assert label in ["expression", "thermostability", "specific activity"]
         self.label = label
+        self.use_all_zeros = use_all_zeros
+        if self.use_all_zeros:
+            print("WARNING: dataset will be set to all zeroes for baseline checking!")
 
         # Resolve and validate data paths
         data_dir_path = Path(data_dir) if data_dir is not None else None
@@ -155,14 +171,31 @@ class AlignBio_DataModule(pl.LightningDataModule):
     # split by dataset column?
     def setup(self, stage: str) -> None:
         if stage == "fit":
-            data = AlignBio_Dataset(self.csv, self.label, self.esm_cache_dir)
+            data = AlignBio_Dataset(
+                self.csv,
+                self.label,
+                self.esm_cache_dir,
+                use_all_zeros=self.use_all_zeros
+            )
             self.train, self.val = random_split(
-                data, [0.8, 0.2], torch.Generator().manual_seed(42)
+                data,
+                [0.8, 0.2],
+                torch.Generator().manual_seed(42)
             )
         if stage == "test":
-            self.test = AlignBio_Dataset(self.csv, self.label, self.esm_cache_dir)
+            self.test = AlignBio_Dataset(
+                self.csv,
+                self.label,
+                self.esm_cache_dir,
+                use_all_zeros=self.use_all_zeros
+            )
         if stage == "predict":
-            self.predict = AlignBio_Dataset(self.csv, self.label, self.esm_cache_dir)
+            self.predict = AlignBio_Dataset(
+                self.csv,
+                self.label,
+                self.esm_cache_dir,
+                use_all_zeros=self.use_all_zeros
+            )
 
     def train_dataloader(self):
         return DataLoader(self.train, shuffle=True, pin_memory=True, num_workers=4, batch_size=self.batch_size)
