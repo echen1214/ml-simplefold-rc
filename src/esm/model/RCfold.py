@@ -35,21 +35,14 @@ class ESM_Regressor(nn.Module):
         # all of the sequences are quite similar ... 
         # so perhaps the pooling may not be so useful
         self.input_mean_axis = input_mean_axis
-        self.feed_forward = nn.Sequential(
-            nn.Linear(input_dim, hidden_size1),
-            nn.LayerNorm(hidden_size1),
-            nn.SiLU(),
-            nn.Dropout(p=dropout_rate),
-        )
-        self.output_layer = nn.Linear(hidden_size1, 1)
+        # Simple baseline: mean pooling over sequence dimension, then linear regression head
+        self.regressor = nn.Linear(input_dim, 1)
 
     def forward(self, input):
         # TODO: add optionality for pooling choices
         #  mean pooling over sequence length to get [B, 1280]
         avg = torch.mean(input, dim=self.input_mean_axis)
-        x = self.feed_forward(avg)
-        out = self.output_layer(x)
-        return out
+        return self.regressor(avg)
 
 class PL_ESM_Regressor(pl.LightningModule):
     def __init__(
