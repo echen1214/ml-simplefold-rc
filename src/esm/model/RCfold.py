@@ -132,7 +132,7 @@ class PL_ESM_Regressor(pl.LightningModule):
         ckpt = getattr(self, "ckpt_path", None)
         dm = self.trainer.datamodule
         test_data = f"{dm.csv.parent.name}/{dm.csv.name}"
-        train_run_url = getattr(self, "checkpoint_url", None)
+        train_run_url = getattr(self.logger._checkpoint, "url", None)
         columns = ["train_run_url", "test_pearson_r", "test_spearman_rho", "test_data", "test_label", "ckpt"]
         values = [str(train_run_url), pearson_r, rho, str(test_data), str(dm.label), str(ckpt)]
         if isinstance(self.logger, WandbLogger):
