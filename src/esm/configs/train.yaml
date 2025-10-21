@@ -9,7 +9,7 @@ train: True
 work_dir: ${hydra:runtime.cwd}
 hydra:
   job:
-    name: expression_MLP
+    name: esm
   run:
     dir: ${work_dir}/sbatch/hydra_logs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
 
@@ -18,6 +18,9 @@ profiler:
   init: False
   dir: ${work_dir}/sbatch/lightning_logs
   filename: ${job_name}
+
+# Optional: resume training from a Lightning checkpoint
+restore_ckpt: null
 
 trainer:
 # lightning logs (check points) in sbatch directory=
@@ -29,4 +32,3 @@ model:
   _target_: src.esm.model.RCfold.PL_ESM_Regressor
   # input_dim specified in experiment/[protein].yaml
   input_dim: ???
-

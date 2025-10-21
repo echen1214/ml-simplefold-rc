@@ -9,6 +9,7 @@ from pathlib import Path
 from .datasets.dataset import AlignBio_DataModule
 from .model.RCfold import PL_ESM_Regressor
 from pytorch_lightning.loggers import WandbLogger, CSVLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 torch.set_float32_matmul_precision("medium")
 # log = RankedLogger(__name__, rank_zero_only=True)
@@ -39,17 +40,27 @@ def train(cfg):
     else:
         logger = CSVLogger(save_dir=cfg.trainer.default_root_dir, name=cfg.job_name)
 
+    checkpoint_callback = ModelCheckpoint(
+        monitor="valid_loss",
+        mode="min",
+        save_top_k=1,
+        save_last=True,
+        filename="{epoch:02d}-{valid_loss:.4f}",
+        auto_insert_metric_name=False,
+    )
+
     trainer = pl.Trainer(
         default_root_dir=cfg.trainer.default_root_dir,
         max_epochs=cfg.trainer.max_epoch, 
         profiler=profiler,
-        logger=logger
+        logger=logger,
+        callbacks=[checkpoint_callback]
     )
 
     print(f"Instantiating datamodule <{cfg.data._target_}>")
     train_dm: pl.LightningDataModule = hydra.utils.instantiate(cfg.data)
 
-    trainer.fit(model=model, train_dataloaders=train_dm)
+    trainer.fit(model=model, train_dataloaders=train_dm, ckpt_path=cfg.get("restore_ckpt"))
 
 @hydra.main(version_base="1.3", config_path="configs", config_name="train.yaml")
 def submit_run(cfg):

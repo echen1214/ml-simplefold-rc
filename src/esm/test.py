@@ -4,18 +4,15 @@ import pytorch_lightning as pl
 import wandb
 from omegaconf import OmegaConf
 from pytorch_lightning.loggers import WandbLogger
+from .model.RCfold import PL_ESM_Regressor
 
 def test(cfg):
     ckpt_path = cfg.get("ckpt_path", None)
     assert ckpt_path is not None, "ckpt_path must be provided in config."
 
-    print(f"Instantiating model {cfg.model._target_}")
-    model: pl.LightningModule = hydra.utils.instantiate(cfg.model)
-
-    checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=True)
-    model.load_state_dict(
-        checkpoint["state_dict"], strict=True
-    )
+    print(f"Loading checkpoint {ckpt_path} into model {cfg.model._target_}")
+    model = PL_ESM_Regressor.load_from_checkpoint(ckpt_path)
+    model.ckpt_path = ckpt_path
     model.eval()
 
     seed = cfg.get("seed", 42)

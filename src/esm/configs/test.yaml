@@ -1,6 +1,6 @@
 defaults:
   - data: eric
-  - experiment: alpha_amylase
+  - experiment: alpha_amylase_expression
   - wandb: eric
   - _self_
 

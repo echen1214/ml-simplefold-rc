@@ -1,0 +1,17 @@
+# @package _global_
+experiment:
+  protein_dir_name: Alpha-Amylase (In Silico_ Supervised)
+
+model:
+  input_dim: 1280
+  input_mean_axis: 1
+  lr: 0.01
+  dropout_rate: 0.1
+  hidden_size1: 256
+
+data:
+  label: specific activity
+  batch_size: 128
+
+trainer:
+  max_epoch: 300
