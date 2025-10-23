@@ -6,8 +6,6 @@ model:
   input_dim: 1280
   input_mean_axis: 1
   lr: 0.01
-  dropout_rate: 0.1
-  hidden_size1: 64
 
 data:
   label: expression

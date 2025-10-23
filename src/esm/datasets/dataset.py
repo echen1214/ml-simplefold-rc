@@ -40,7 +40,8 @@ class AlignBio_Dataset(Dataset):
         label_col: str = "expression", 
         cache: Path = None, 
         aggregate_replicates: bool = False,
-        use_all_zeros = False
+        use_all_zeros = False,
+        use_bos: bool = False,
     ):
         super().__init__()
 
@@ -55,6 +56,7 @@ class AlignBio_Dataset(Dataset):
             self.df_alignbio = self.df_alignbio.dropna(subset=[self.label_col]).reset_index(drop=True)
         self.cache = cache
         self.use_all_zeros = use_all_zeros
+        self.use_bos = use_bos
 
     def __len__(self) -> int:
         return len(self.df_alignbio)
@@ -93,6 +95,11 @@ class AlignBio_Dataset(Dataset):
                     result = {"label": label}
                     truncate_len = min(self.truncation_seq_length, len(strs[i]))
                     # NOTE: token 0 is always a beginning-of-sequence token, so the first residue is token 1.
+                    # Save BOS/CLS token embedding at index 0
+                    result["bos"] = {
+                        layer: t[i, 0].clone()
+                        for layer, t in representations.items()
+                    }
                     result["representations"] = {
                         layer: t[i, 1 : truncate_len + 1].clone()
                         for layer, t in representations.items()
@@ -111,10 +118,16 @@ class AlignBio_Dataset(Dataset):
             "seq": self.df_alignbio["mutated_sequence"].iloc[idx],
             "label": torch.tensor(float(self.df_alignbio[self.label_col].iloc[idx]), dtype=torch.float32)
         }
-        input = torch.load(self.cache / Path(f"{sample['name']}.pt"))['representations'][33]
+        obj = torch.load(self.cache / Path(f"{sample['name']}.pt"))
+        reps = obj["representations"][33]
+        if self.use_bos:
+            bos = obj["bos"][33].unsqueeze(0)
+            embed = torch.cat([bos, reps], dim=0)
+        else:
+            embed = reps
         if self.use_all_zeros:
-            input = torch.zeros_like(input)
-        sample["embed"] = input
+            embed = torch.zeros_like(embed)
+        sample["embed"] = embed
         return sample
 
 # pytorch lightning wrapper to prepare the datasets
@@ -133,12 +146,14 @@ class AlignBio_DataModule(pl.LightningDataModule):
         batch_size: int = 32,
         preprocess: bool = False,
         data_root: str = None,
-        use_all_zeros: bool = False
+        use_all_zeros: bool = False,
+        use_bos: bool = False,
     ):
         super().__init__()    
         # assert label in ["expression", "thermostability", "specific activity"]
         self.label = label
         self.use_all_zeros = use_all_zeros
+        self.use_bos = use_bos
         if self.use_all_zeros:
             print("WARNING: dataset will be set to all zeroes for baseline checking!")
 
@@ -175,7 +190,8 @@ class AlignBio_DataModule(pl.LightningDataModule):
                 self.csv,
                 self.label,
                 self.esm_cache_dir,
-                use_all_zeros=self.use_all_zeros
+                use_all_zeros=self.use_all_zeros,
+                use_bos=self.use_bos,
             )
             self.train, self.val = random_split(
                 data,
@@ -187,21 +203,52 @@ class AlignBio_DataModule(pl.LightningDataModule):
                 self.csv,
                 self.label,
                 self.esm_cache_dir,
-                use_all_zeros=self.use_all_zeros
+                use_all_zeros=self.use_all_zeros,
+                use_bos=self.use_bos,
             )
         if stage == "predict":
             self.predict = AlignBio_Dataset(
                 self.csv,
                 self.label,
                 self.esm_cache_dir,
-                use_all_zeros=self.use_all_zeros
+                use_all_zeros=self.use_all_zeros,
+                use_bos=self.use_bos,
             )
 
     def train_dataloader(self):
-        return DataLoader(self.train, shuffle=True, pin_memory=True, num_workers=4, batch_size=self.batch_size)
+        return DataLoader(
+            self.train,
+            shuffle=True,
+            pin_memory=True,
+            num_workers=4,
+            persistent_workers=True,
+            prefetch_factor=4,
+            batch_size=self.batch_size,
+        )
     def val_dataloader(self):
-        return DataLoader(self.val, pin_memory=True, num_workers=4, batch_size=self.batch_size)
+        return DataLoader(
+            self.val,
+            pin_memory=True,
+            num_workers=4,
+            persistent_workers=True,
+            prefetch_factor=4,
+            batch_size=self.batch_size,
+        )
     def test_dataloader(self):
-        return DataLoader(self.test, batch_size=self.batch_size)
+        return DataLoader(
+            self.test,
+            pin_memory=True,
+            num_workers=4,
+            persistent_workers=True,
+            prefetch_factor=4,
+            batch_size=self.batch_size,
+        )
     def predict_dataloader(self):
-        return DataLoader(self.predict, batch_size=self.batch_size)
+        return DataLoader(
+            self.predict,
+            pin_memory=True,
+            num_workers=4,
+            persistent_workers=True,
+            prefetch_factor=4,
+            batch_size=self.batch_size,
+        )

@@ -2,6 +2,7 @@ import torch
 import pytorch_lightning as pl
 import wandb
 from torch import nn
+import torch.nn.functional as F
 from torchmetrics.functional import spearman_corrcoef
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.utilities import rank_zero_only
@@ -19,6 +20,7 @@ class ESM_Regressor(nn.Module):
         esm_embed_dim = 1280,
         # device = "cuda:0",
         dropout_rate: float = 0.1,
+        pooling_mode: str = "mean",  # "mean" or "flatten"
     ):
     # extract per-residue reprsentation
     # s representation
@@ -35,13 +37,26 @@ class ESM_Regressor(nn.Module):
         # all of the sequences are quite similar ... 
         # so perhaps the pooling may not be so useful
         self.input_mean_axis = input_mean_axis
-        # Simple baseline: mean pooling over sequence dimension, then linear regression head
-        self.regressor = nn.Linear(input_dim, 1)
+        self.pooling_mode = pooling_mode
+        if self.pooling_mode == "flatten":
+            # In flatten mode, input_dim is the flattened feature size (L*E)
+            self.regressor = nn.Linear(input_dim, 1)
+            self.norm = nn.LayerNorm(input_dim)
+        else:
+            # In mean mode, input_dim is the embedding size (E)
+            self.regressor = nn.Linear(input_dim, 1)
+            self.norm = nn.LayerNorm(input_dim)
 
     def forward(self, input):
-        # TODO: add optionality for pooling choices
-        #  mean pooling over sequence length to get [B, 1280]
+        # input shapes:
+        # - mean mode: [B, L, E] -> mean over L -> [B, E]
+        # - flatten mode: [B, L, E] -> flatten -> [B, L*E]
+        if self.pooling_mode == "flatten":
+            x = input.flatten(start_dim=1)
+            x = self.norm(x)
+            return self.regressor(x)
         avg = torch.mean(input, dim=self.input_mean_axis)
+        avg = self.norm(avg)
         return self.regressor(avg)
 
 class PL_ESM_Regressor(pl.LightningModule):
@@ -54,6 +69,8 @@ class PL_ESM_Regressor(pl.LightningModule):
         loss_fn = nn.MSELoss(), 
         lr: float = 0.01,
         dropout_rate: float = 0.1,
+        pooling_mode: str = "mean",
+        weight_decay: float = 0.0,
     ):
     # add config file that describes the architecture
         super().__init__()
@@ -62,10 +79,12 @@ class PL_ESM_Regressor(pl.LightningModule):
             input_mean_axis=input_mean_axis,
             hidden_size1=hidden_size1,
             esm_embed_dim=1280,
-            dropout_rate=dropout_rate
+            dropout_rate=dropout_rate,
+            pooling_mode=pooling_mode,
         )
         self.loss_fn = loss_fn
         self.lr = lr
+        self.weight_decay = weight_decay
         # Save key hyperparameters into the Lightning checkpoint automatically
         # (exclude non-serializable objects like loss_fn)
         self.save_hyperparameters(ignore=["loss_fn"])
@@ -92,7 +111,7 @@ class PL_ESM_Regressor(pl.LightningModule):
 
     # configure_optimizers
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.lr)
+        return torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
     def on_save_checkpoint(self, checkpoint):
         dm = self.trainer.datamodule
