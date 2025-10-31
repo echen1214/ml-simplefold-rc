@@ -3,11 +3,14 @@ experiment:
   protein_dir_name: Alpha-Amylase (In Silico_ Supervised)
 
 model:
-  input_dim: 1280
-  input_mean_axis: 1
+  model: "MLP"
+  n_res: 425
+  pooling_mode: "mean"
+  input_mean_axis: 2
+  esm_embed_dim: 1280
+  hidden_size1: 64
   lr: 0.01
   dropout_rate: 0.1
-  hidden_size1: 64
 
 data:
   label: expression
