@@ -136,7 +136,7 @@ class PL_ESM_Regressor(pl.LightningModule):
         x, y = batch['embed'], batch['label']
         y_hat = self.model(x).reshape(-1)
         loss = self.loss_fn(y_hat, y)
-        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log("train/loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
     
     # validation_step
@@ -144,30 +144,14 @@ class PL_ESM_Regressor(pl.LightningModule):
         x, y = batch['embed'], batch['label']
         y_hat = self.model(x).reshape(-1)
         loss = self.loss_fn(y_hat, y)
-        self.log("valid_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log("valid/loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
         rho = spearman_corrcoef(y_hat, y).item()
-        self.log("valid_spearman", rho, on_epoch=True, prog_bar=False, logger=False)
+        self.log("valid/spearman", rho, on_epoch=True, prog_bar=False, logger=False)
 
     # configure_optimizers
     def configure_optimizers(self):
         return torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
-
-    def on_save_checkpoint(self, checkpoint):
-        dm = self.trainer.datamodule
-        data = f"{dm.csv.parent.name}/{dm.csv.name}"
-        checkpoint["data"] = data
-        checkpoint["label"] = dm.label
-        # Save the W&B run URL for later reference
-        if isinstance(self.logger, WandbLogger):
-            run = getattr(self.logger, "experiment", None)
-            run_url = getattr(run, "url", None)
-            if run_url:
-                checkpoint["wandb_run_url"] = run_url
-
-    def on_load_checkpoint(self, checkpoint):
-        # Load the W&B run URL from the checkpoint
-        self.train_run_url = checkpoint.get("wandb_run_url")
 
     def test_step(self, batch, batch_idx):
         x, y = batch['embed'], batch['label']
@@ -197,6 +181,22 @@ class PL_ESM_Regressor(pl.LightningModule):
             metrics_dict = dict(zip(columns, values))
             self.logger.log_metrics(metrics_dict)
 
+    def on_save_checkpoint(self, checkpoint):
+        dm = self.trainer.datamodule
+        data = f"{dm.csv.parent.name}/{dm.csv.name}"
+        checkpoint["data"] = data
+        checkpoint["label"] = dm.label
+        # Save the W&B run URL for later reference
+        if isinstance(self.logger, WandbLogger):
+            run = getattr(self.logger, "experiment", None)
+            run_url = getattr(run, "url", None)
+            if run_url:
+                checkpoint["wandb_run_url"] = run_url
+
+    def on_load_checkpoint(self, checkpoint):
+        # Load the W&B run URL from the checkpoint
+        self.train_run_url = checkpoint.get("wandb_run_url")
+        
     # predict_step
     # run model beginning from sequence->embedding->push through model
 
