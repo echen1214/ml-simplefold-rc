@@ -41,7 +41,7 @@ def train(cfg):
         logger = CSVLogger(save_dir=cfg.trainer.default_root_dir, name=cfg.job_name)
 
     checkpoint_callback = ModelCheckpoint(
-        monitor="valid_spearman",
+        monitor="valid/spearman",
         mode="min",
         save_top_k=1,
         save_last=True,
@@ -50,11 +50,9 @@ def train(cfg):
     )
 
     earlystopping_callback = EarlyStopping(
-        monitor="valid_spearman",
+        monitor="valid/spearman",
         mode="min",
-        patience=5,
-        check_val_every_n_epoch=10,
-        filename="earlystop-{epoch:02d}-{valid_spearman:.4f}",
+        patience=10,
         check_on_train_epoch_end=True,
     )
 
