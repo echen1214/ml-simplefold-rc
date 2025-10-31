@@ -62,6 +62,7 @@ class ESM_Regressor(nn.Module):
 class PL_ESM_Regressor(pl.LightningModule):
     def __init__(
         self,
+        name: str = None, 
         input_dim: int = 425, 
         input_mean_axis: int = 2,
         hidden_size1: int = 64, 
@@ -82,6 +83,7 @@ class PL_ESM_Regressor(pl.LightningModule):
             dropout_rate=dropout_rate,
             pooling_mode=pooling_mode,
         )
+        self.name = name
         self.loss_fn = loss_fn
         self.lr = lr
         self.weight_decay = weight_decay
@@ -144,7 +146,7 @@ class PL_ESM_Regressor(pl.LightningModule):
         ckpt = getattr(self, "ckpt_path", None)
         dm = self.trainer.datamodule
         test_data = f"{dm.csv.parent.name}/{dm.csv.name}"
-        train_run_url = getattr(self, "checkpoint_url", None)
+        train_run_url = getattr(self, "train_run_url", None)
         columns = ["train_run_url", "test_pearson_r", "test_spearman_rho", "test_data", "test_label", "ckpt"]
         values = [str(train_run_url), pearson_r, rho, str(test_data), str(dm.label), str(ckpt)]
         if isinstance(self.logger, WandbLogger):
