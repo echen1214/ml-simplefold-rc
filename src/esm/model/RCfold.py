@@ -146,6 +146,9 @@ class PL_ESM_Regressor(pl.LightningModule):
         loss = self.loss_fn(y_hat, y)
         self.log("valid_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
+        rho = spearman_corrcoef(y_hat, y).item()
+        self.log("valid_spearman", rho, on_epoch=True, prog_bar=False, logger=False)
+
     # configure_optimizers
     def configure_optimizers(self):
         return torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
