@@ -1,7 +1,7 @@
 # to run on lighting studio, run with `python -m src.esm.train data=patrick wandb=patrick`
 defaults:
   - data: eric
-  - experiment: alpha_amylase
+  - experiment: alpha_amylase_expression
   - wandb: eric
   - _self_
 
