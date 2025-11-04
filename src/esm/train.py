@@ -42,16 +42,17 @@ def train(cfg):
 
     checkpoint_callback = ModelCheckpoint(
         monitor="valid/spearman",
-        mode="min",
+        mode="max",
         save_top_k=1,
         save_last=True,
         filename="{epoch:02d}-{valid_spearman:.4f}",
         auto_insert_metric_name=False,
+        every_n_epochs=5,
     )
 
     earlystopping_callback = EarlyStopping(
         monitor="valid/spearman",
-        mode="min",
+        mode="max",
         patience=10,
         check_on_train_epoch_end=True,
     )
