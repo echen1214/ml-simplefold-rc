@@ -57,12 +57,14 @@ class ESM_Regressor(nn.Module):
         # so perhaps the pooling may not be so useful
         self.input_mean_axis = input_mean_axis
         self.pooling_mode = pooling_mode
-
+        
         # In flatten mode, input_dim is the flattened feature size (N*E)
         if self.pooling_mode == "flatten":
             self.input_dim = n_res * esm_embed_dim
+            self.input_mean_axis = None
         # In mean mode, input_dim is the embedding size (E or N)
         elif self.pooling_mode == "mean":
+            assert self.input_mean_axis
             if self.input_mean_axis == 1:
                 self.input_dim = esm_embed_dim
             elif self.input_mean_axis == 2:
@@ -145,9 +147,8 @@ class PL_ESM_Regressor(pl.LightningModule):
         y_hat = self.model(x).reshape(-1)
         loss = self.loss_fn(y_hat, y)
         self.log("valid/loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-
         rho = spearman_corrcoef(y_hat, y).item()
-        self.log("valid/spearman", rho, on_epoch=True, prog_bar=False, logger=False)
+        self.log("valid/spearman", rho, on_epoch=True, prog_bar=False, logger=True)
 
     # configure_optimizers
     def configure_optimizers(self):
