@@ -1,0 +1,21 @@
+program: src.esm.train
+method: bayes
+metric:
+  goal: minimize
+  name: valid/spearman
+
+# formatting follows https://github.com/wandb/wandb/issues/4686#issuecomment-2407556397
+parameters:
+  model.input_mean_axis:
+    values: [1,2]
+  model.pooling_mode:
+    values: [mean, flatten]
+  model.model:
+    values: [MLP, Linear]
+
+command:
+  - ${env}
+  - python
+  - -m
+  - ${program}
+  - ${args_no_hyphens}

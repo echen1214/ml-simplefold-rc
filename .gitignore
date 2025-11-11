@@ -1,3 +1,6 @@
+multirun/
+RCfold/
+
 *__pycache__/
 *.DS_Store
 *simplefold.egg-info

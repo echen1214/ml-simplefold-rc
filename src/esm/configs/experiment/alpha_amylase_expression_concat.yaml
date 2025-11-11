@@ -3,18 +3,14 @@ experiment:
   protein_dir_name: Alpha-Amylase (In Silico_ Supervised)
 
 model:
-  model: "MLP"
-  n_res: 425
-  pooling_mode: "mean"
-  input_mean_axis: 2
-  esm_embed_dim: 1280
-  hidden_size1: 64
   lr: 0.01
-  dropout_rate: 0.1
+  pooling_mode: "flatten"
+  input_dim: 545280
 
 data:
   label: expression
   batch_size: 128
+  use_bos: True
 
 trainer:
   max_epoch: 400 

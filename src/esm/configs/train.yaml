@@ -1,7 +1,7 @@
 # to run on lighting studio, run with `python -m src.esm.train data=patrick wandb=patrick`
 defaults:
   - data: eric
-  - experiment: alpha_amylase
+  - experiment: alpha_amylase_expression
   - wandb: eric
   - _self_
 
@@ -25,10 +25,9 @@ restore_ckpt: null
 trainer:
 # lightning logs (check points) in sbatch directory=
   default_root_dir: ${work_dir}/sbatch/lightning_logs
-  max_epoch: 250
+  max_epoch: 400
 
 ## no relative imports in the config
 model:
   _target_: src.esm.model.RCfold.PL_ESM_Regressor
-  # input_dim specified in experiment/[protein].yaml
-  input_dim: ???
+  # input_dim calculated specified in experiment/[protein].yaml
