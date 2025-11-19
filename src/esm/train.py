@@ -45,7 +45,7 @@ def train(cfg):
         mode="max",
         save_top_k=1,
         save_last=True,
-        filename="{epoch:02d}-{valid_spearman:.4f}",
+        filename="{epoch:02d}-{valid/spearman:.4f}",
         auto_insert_metric_name=False,
         every_n_epochs=5,
     )
