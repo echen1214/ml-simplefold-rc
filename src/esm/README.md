@@ -1,5 +1,8 @@
 # esm trainer
 
+# new pip dependenices
+pip install uv marimo
+
 ## lighting studio setup for training
 
 - clone this repo to the studio workspace
