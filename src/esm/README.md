@@ -1,8 +1,10 @@
-# esm trainer
+# esm regression trainer
 
-# new pip dependenices
+# additional pip dependenices
+```
 pip install uv marimo
-
+pip install xgboost
+```
 ## lighting studio setup for training
 
 - clone this repo to the studio workspace
